@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kartik · Salesforce Utilities</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Six utilities for Salesforce developers, admins and implementation partners: org-to-org data migration, debug log analysis, field usage, permission diff, data cleanup and log cleanup. Watch each one run.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: left-aligned catalogue. Hero is a tool index; each tool is a wide demo beside a spec column. */
+:root{
+ --bg:#f2f4f8; --surface:#ffffff; --ink:#0f1a2e; --muted:#55617a; --line:#d5dbe7; --soft:#e6eaf2;
+ --accent:#2143c9; --on-accent:#ffffff; --ok:#0d7458; --screen:#0b1220; --screen-line:#27334d;
+ --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+ --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --bg:#0a0f19; --surface:#111927; --ink:#e7ecf6; --muted:#9aa6bd; --line:#232e45; --soft:#172135;
+ --accent:#93a8ff; --on-accent:#0a0f19; --ok:#57d1ac; --screen:#060a12; --screen-line:#27334d; color-scheme:dark}}
+:root[data-theme="dark"]{
+ --bg:#0a0f19; --surface:#111927; --ink:#e7ecf6; --muted:#9aa6bd; --line:#232e45; --soft:#172135;
+ --accent:#93a8ff; --on-accent:#0a0f19; --ok:#57d1ac; --screen:#060a12; --screen-line:#27334d; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+h1,h2{font-family:var(--display);letter-spacing:-.02em;text-wrap:balance;margin:0}
+h3{font:600 .78rem/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:20px;min-height:56px}
+.brand{font:700 1.05rem var(--display);color:var(--ink);text-decoration:none;white-space:nowrap}
+.brand span{color:var(--muted);font-weight:500}
+.top nav{display:flex;gap:18px;margin-left:auto;overflow-x:auto;scrollbar-width:none;min-width:0}
+.top nav a{color:var(--muted);text-decoration:none;font-size:.86rem;white-space:nowrap}
+.top nav a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none;padding:10px 18px;border-radius:8px;border:0;font-size:.95rem;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.top .btn{padding:7px 14px;font-size:.86rem}
+@media (max-width:860px){.top nav{display:none}.top .btn{margin-left:auto}}
+
+.hero{padding-block:64px 56px}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:56px;align-items:start}
+.eyebrow{font:500 .8rem var(--mono);color:var(--muted);margin:0 0 18px}
+.hero h1{font-size:clamp(2.3rem,5vw,3.7rem);line-height:1.02;font-weight:700}
+.lede{font-size:1.12rem;color:var(--muted);max-width:34em;margin:22px 0 28px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.trust{list-style:none;padding:0;margin:34px 0 0;display:flex;flex-direction:column;gap:8px;font-size:.92rem;color:var(--muted)}
+.trust li{display:flex;gap:10px;align-items:baseline}
+.trust li::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--ok);transform:translateY(-1px)}
+.index{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.index-head{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;font:500 .76rem var(--mono);color:var(--muted);border-bottom:1px solid var(--line);background:var(--soft)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n k" "p g";gap:2px 14px;padding:14px 18px;text-decoration:none;color:var(--ink);border-top:1px solid var(--line)}
+.index-head + .row{border-top:0}
+.row:hover{background:var(--soft)}
+.rn{grid-area:n;font:700 1.08rem var(--display)}
+.rk{grid-area:k;font:500 .72rem var(--mono);color:var(--muted);align-self:center;white-space:nowrap}
+.rp{grid-area:p;font-size:.88rem;color:var(--muted);line-height:1.45}
+.go{grid-area:g;justify-self:end;align-self:end;color:var(--accent);font-weight:600}
+@media (max-width:900px){.hero{padding-block:40px}.hero .wrap{grid-template-columns:minmax(0,1fr);gap:36px}}
+
+.tool{padding-block:60px;border-top:1px solid var(--line)}
+.tool-head{max-width:46rem;margin-bottom:28px}
+.kind{font:500 .78rem var(--mono);color:var(--accent);margin:0 0 10px}
+.tool h2{font-size:clamp(1.8rem,3.4vw,2.5rem);line-height:1.08;font-weight:700}
+.pitch{font-size:1.1rem;color:var(--muted);margin:12px 0 0}
+.tool-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:40px;align-items:start}
+.demo{margin:0;position:sticky;top:76px}
+.frame{position:relative;background:var(--screen);border:1px solid var(--screen-line);border-radius:12px;overflow:hidden;aspect-ratio:16/9;max-width:100%}
+.frame video{display:block;width:100%;height:100%;object-fit:contain;background:var(--screen)}
+.play{position:absolute;left:16px;bottom:16px;display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:var(--on-accent);border:0;border-radius:999px;padding:10px 18px 10px 14px;font:600 .95rem var(--body);cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.play .tri{width:0;height:0;border-left:11px solid currentColor;border-block:7px solid transparent}
+.play .len{font:500 .8rem var(--mono);opacity:.8}
+.frame.on .play{display:none}
+figcaption{font-size:.8rem;color:var(--muted);margin-top:10px}
+.detail{display:flex;flex-direction:column;gap:14px;min-width:0}
+.does{margin:0 0 10px;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:.96rem;line-height:1.5}
+.does li{padding-left:18px;position:relative}
+.does li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:2px;background:var(--accent)}
+.code{background:var(--screen);border:1px solid var(--screen-line);border-radius:10px;overflow-x:auto}
+.code pre{margin:0;padding:14px 16px;font:400 .82rem/1.7 var(--mono);color:#d9e2f2;white-space:pre}
+.code .pr{color:#5fd0a5;user-select:none}
+.facts{margin:10px 0 0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.facts div{display:grid;grid-template-columns:7.2rem minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.facts dt{font:500 .76rem/1.9 var(--mono);color:var(--muted)}
+.facts dd{margin:0;line-height:1.5}
+@media (max-width:900px){.tool{padding-block:44px}.tool-grid{grid-template-columns:minmax(0,1fr);gap:26px}.demo{position:static}}
+
+.band{padding-block:60px;border-top:1px solid var(--line);background:var(--surface)}
+.band h2{font-size:clamp(1.7rem,3vw,2.2rem);font-weight:700;margin-bottom:26px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}
+.three h3{margin-bottom:10px;color:var(--ink)}
+.three p{margin:0;color:var(--muted);font-size:.96rem}
+@media (max-width:800px){.three{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+.contact{padding-block:72px;border-top:1px solid var(--line)}
+.contact .wrap{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:48px;align-items:start}
+.contact h2{font-size:clamp(2rem,4vw,2.9rem);font-weight:700;line-height:1.05}
+.contact p{color:var(--muted);max-width:32em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.addr{font:500 1.05rem var(--mono);overflow-wrap:anywhere;user-select:all}
+.card .cta{margin-top:4px}
+.todo{font-size:.88rem;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;color:var(--muted)}
+#copied{font-size:.85rem;color:var(--ok);min-height:1.2em}
+@media (max-width:800px){.contact .wrap{grid-template-columns:minmax(0,1fr);gap:28px}}
+
+footer{border-top:1px solid var(--line);padding-block:26px 40px;font-size:.8rem;color:var(--muted)}
+footer p{margin:0 0 6px;max-width:60em}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="wrap">
+ <a class="brand" href="#top">Kartik <span>· Salesforce Utilities</span></a>
+ <nav aria-label="Tools"><a href="#data-migration">Migration</a><a href="#log-analyzer">Log Analyzer</a><a href="#field-usage">Field Usage</a><a href="#permission-diff">Permission Diff</a><a href="#object-cleaner">Object Cleaner</a><a href="#delete-apex-logs">Log Cleaner</a></nav>
+ <a class="btn" href="#contact">Request a demo</a>
+</div></div>
+
+<main id="top">
+<section class="hero"><div class="wrap">
+ <div>
+  <p class="eyebrow">For Salesforce developers, admins and implementation partners</p>
+  <h1>Six utilities for the Salesforce jobs that eat a sprint.</h1>
+  <p class="lede">Migrate data between orgs and prove it arrived. Read a debug log in seconds. Find dead fields, compare permissions, free up storage. Every tool below has a recorded demo, so you can watch it work before you ask for it.</p>
+  <div class="cta"><a class="btn" href="#data-migration">Watch the demos</a><a class="btn ghost" href="#contact">Request a live demo</a></div>
+  <ul class="trust">
+   <li>Runs on your own machine. Org data is not sent to any third-party server.</li>
+   <li>Signs in with your existing Salesforce CLI login. No connected app to install.</li>
+   <li>Works with sandboxes and production, on Windows, macOS and Linux.</li>
+  </ul>
+ </div>
+ <div class="index" aria-label="The six tools">
+  <div class="index-head"><span>tool</span><span>6 utilities · python 3</span></div>
+  <a class="row" href="#data-migration"><span class="rn">Org-to-Org Data Migration</span><span class="rk">Pipeline</span><span class="rp">Move data between two Salesforce orgs and prove, field by field, that it arrived intact.</span><span class="go" aria-hidden="true">→</span></a><a class="row" href="#log-analyzer"><span class="rn">Debug Log Analyzer</span><span class="rk">Local web app</span><span class="rp">Find the one line that matters in a 20 MB debug log, and the failing API call among hundreds.</span><span class="go" aria-hidden="true">→</span></a><a class="row" href="#field-usage"><span class="rn">Field Usage Finder</span><span class="rk">Command line</span><span class="rp">See which fields on an object are dead weight before you clean up or migrate.</span><span class="go" aria-hidden="true">→</span></a><a class="row" href="#permission-diff"><span class="rn">Permission Diff</span><span class="rk">Command line</span><span class="rp">Answer “why can this user do that and the other one can’t?” in one command.</span><span class="go" aria-hidden="true">→</span></a><a class="row" href="#object-cleaner"><span class="rn">Object Cleaner</span><span class="rk">Local web app</span><span class="rp">Get data storage back by bulk-deleting old records, with a preview before every delete.</span><span class="go" aria-hidden="true">→</span></a><a class="row" href="#delete-apex-logs"><span class="rn">Apex Log Cleaner</span><span class="rk">Command line</span><span class="rp">Clear thousands of debug logs in one run instead of clicking through the Developer Console.</span><span class="go" aria-hidden="true">→</span></a>
+ </div>
+</div></section>
+
+
+<section class="tool" id="data-migration">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Pipeline · command line</p>
+   <h2>Org-to-Org Data Migration</h2>
+   <p class="pitch">Move data between two Salesforce orgs and prove, field by field, that it arrived intact.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-data-migration" playsinline muted preload="none" poster="media/data-migration.jpg" aria-label="Org-to-Org Data Migration demo video">
+      <source src="media/data-migration.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-data-migration" aria-label="Play the Org-to-Org Data Migration demo"><span class="tri"></span>Watch the demo<span class="len">0:46</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>Preflight compares both orgs and lists blocking issues before anything is written: missing fields, picklist values the target rejects, unmatched users, audit fields it cannot set.</li><li>Works out the load order from org metadata. Parents load first, and lookups that form loops (Account.ParentId, Account ↔ Contact) are filled in a second pass.</li><li>Rewrites every Id to its new value in the target, including owners and polymorphic fields such as Task.WhatId.</li><li>Validates twice: record counts, then every field of every record. A trigger that quietly changes data in the target gets caught.</li><li>Reruns send only what failed. Rollback removes every migrated record.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python migrate.py -c config.yaml preflight
+<span class="pr">$</span> python migrate.py -c config.yaml run</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>One HTML sign-off report, plus CSVs for load errors, mismatches and data loss</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · simple-salesforce · DuckDB · Bulk API 2.0</dd></div>
+     <div><dt>Good to know</dt><dd>Current scope is Salesforce to Salesforce with the same data model. Files and attachments, Chatter and Person Accounts are not covered yet. The demo runs on two simulated orgs.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+<section class="tool" id="log-analyzer">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Local web app</p>
+   <h2>Debug Log Analyzer</h2>
+   <p class="pitch">Find the one line that matters in a 20 MB debug log, and the failing API call among hundreds.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-log-analyzer" playsinline muted preload="none" poster="media/log-analyzer.jpg" aria-label="Debug Log Analyzer demo video">
+      <source src="media/log-analyzer.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-log-analyzer" aria-label="Play the Debug Log Analyzer demo"><span class="tri"></span>Watch the demo<span class="len">1:01</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>Pulls Apex debug logs by time range, user, status or API path such as /services/apexrest/orders.</li><li>Puts the real error first: unhandled and caught exceptions, failed validation rules, Flow errors, System.debug ERROR lines and HTTP callouts that returned 400 or above.</li><li>Adds a plain-English hint for common errors, the stack trace, and the events just before the failure.</li><li>Warns about governor limits at 80% or more and about the same query or DML repeated in a loop.</li><li>Searches inside log bodies for a record Id or order number, and copies a summary for Jira or Slack.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python sf_log_analyzer.py --org myOrg</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>Opens at http://127.0.0.1:8766 in your browser</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · requests · Salesforce CLI login</dd></div>
+     <div><dt>Good to know</dt><dd>The detail depends on your trace flag levels. Raw logs stay in memory on your machine; nothing is uploaded.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+<section class="tool" id="field-usage">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Command line</p>
+   <h2>Field Usage Finder</h2>
+   <p class="pitch">See which fields on an object are dead weight before you clean up or migrate.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-field-usage" playsinline muted preload="none" poster="media/field-usage.jpg" aria-label="Field Usage Finder demo video">
+      <source src="media/field-usage.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-field-usage" aria-label="Play the Field Usage Finder demo"><span class="tri"></span>Watch the demo<span class="len">0:24</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>Ranks every field on an object from unused to heavily used.</li><li>Measures the data: what share of records hold a value in each field.</li><li>Finds the references: Apex, triggers, Flows, validation rules, reports, page layouts, LWC, Aura, Visualforce, formula fields and email templates.</li><li>Gives a plain verdict per field, such as “NOT USED anywhere” or “Only on page layouts (but empty)”.</li><li>Saves a CSV naming every class, Flow or report that references each field.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python field_usage.py Account --org myOrg
+<span class="pr">$</span> python field_usage.py Invoice__c --org myOrg --custom-only</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>Colour-coded table in the terminal and a CSV for the audit trail</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · simple-salesforce · rich</dd></div>
+     <div><dt>Good to know</dt><dd>Reference tracking covers custom fields; standard fields need the --scan-apex text search. It cannot see managed packages, dynamic SOQL or outside integrations, so treat “not used” as “check before deleting”.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+<section class="tool" id="permission-diff">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Command line · HTML report</p>
+   <h2>Permission Diff</h2>
+   <p class="pitch">Answer “why can this user do that and the other one can’t?” in one command.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-permission-diff" playsinline muted preload="none" poster="media/permission-diff.jpg" aria-label="Permission Diff demo video">
+      <source src="media/permission-diff.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-permission-diff" aria-label="Play the Permission Diff demo"><span class="tri"></span>Watch the demo<span class="len">0:45</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>Compares two profiles, two permission sets, or one of each, side by side.</li><li>Covers object access, field access, system permissions, Apex classes, Visualforce pages, tabs, apps, custom permissions, flows and custom metadata.</li><li>Reads straight from the org, or from two retrieved metadata XML files with no org connection.</li><li>Report has category filters, search and a “differences only” switch.</li><li>Exports the differences as CSV for an audit or a change ticket.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python permission_diff.py &quot;Sales User&quot; &quot;Sales Manager&quot; --org myOrg
+<span class="pr">$</span> python permission_diff.py --list --org myOrg</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>Self-contained HTML report that opens in your browser</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · simple-salesforce</dd></div>
+     <div><dt>Good to know</dt><dd>Record type visibility is compared only in metadata-file mode, because Salesforce does not expose it for profiles through queries.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+<section class="tool" id="object-cleaner">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Local web app</p>
+   <h2>Object Cleaner</h2>
+   <p class="pitch">Get data storage back by bulk-deleting old records, with a preview before every delete.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-object-cleaner" playsinline muted preload="none" poster="media/object-cleaner.jpg" aria-label="Object Cleaner demo video">
+      <source src="media/object-cleaner.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-object-cleaner" aria-label="Play the Object Cleaner demo"><span class="tri"></span>Watch the demo<span class="len">1:01</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>One row per object, standard or custom: older than N days, owner, and any SOQL condition.</li><li>Preview shows how many records match before anything is deleted.</li><li>Deletes through Bulk API 2.0 in 100,000-record jobs, so millions of Tasks or EmailMessages are fine.</li><li>Optional hard delete skips the Recycle Bin. Failed records are listed with the reason.</li><li>A storage meter refreshes after each delete, and your rows are saved for the next run.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python sf_cleanup_app.py --org myOrg</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>Opens at http://127.0.0.1:8765 in your browser</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · requests · Salesforce CLI login</dd></div>
+     <div><dt>Good to know</dt><dd>A row needs at least one filter, so a blank row can never wipe an object. Deleting a parent record also deletes its children, and hard deletes cannot be undone.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+<section class="tool" id="delete-apex-logs">
+ <div class="wrap">
+  <header class="tool-head">
+   <p class="kind">Command line</p>
+   <h2>Apex Log Cleaner</h2>
+   <p class="pitch">Clear thousands of debug logs in one run instead of clicking through the Developer Console.</p>
+  </header>
+  <div class="tool-grid">
+   <figure class="demo">
+    <div class="frame">
+     <video id="v-delete-apex-logs" playsinline muted preload="none" poster="media/delete-apex-logs.jpg" aria-label="Apex Log Cleaner demo video">
+      <source src="media/delete-apex-logs.mp4" type="video/mp4">
+     </video>
+     <button class="play" type="button" data-v="v-delete-apex-logs" aria-label="Play the Apex Log Cleaner demo"><span class="tri"></span>Watch the demo<span class="len">0:29</span></button>
+    </div>
+    <figcaption>Screen recording of the tool itself, run against a simulated org with sample data.</figcaption>
+   </figure>
+   <div class="detail">
+    <h3>What it does</h3>
+    <ul class="does"><li>Counts first with --dry-run, so you see what would go.</li><li>Deletes everything, only logs older than N days, or only one user’s logs.</li><li>Runs ten deletes in parallel and prints progress as it goes.</li><li>Asks for confirmation unless you pass --yes, which makes it safe to schedule.</li><li>Reports how many were deleted and lists any that failed.</li></ul>
+    <h3>Run it</h3>
+    <div class="code"><pre><span class="pr">$</span> python delete_apex_logs.py --org myOrg --dry-run
+<span class="pr">$</span> python delete_apex_logs.py --org myOrg --older-than-days 7</pre></div>
+    <dl class="facts">
+     <div><dt>You get</dt><dd>Progress and a final count in the terminal</dd></div>
+     <div><dt>Needs</dt><dd>Python 3 · requests</dd></div>
+     <div><dt>Good to know</dt><dd>Uses the Tooling API with your existing Salesforce CLI login or an access token.</dd></div>
+    </dl>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section class="band"><div class="wrap">
+ <h2>How they fit into a project</h2>
+ <div class="three">
+  <div><h3>Nothing to install in the org</h3><p>The tools are Python scripts that call the standard Salesforce REST, Tooling and Bulk APIs. There is no managed package, no connected app and no change to your org’s metadata.</p></div>
+  <div><h3>Your data stays with you</h3><p>The two web apps listen only on 127.0.0.1. Logs, record Ids and migration data are held on the machine that runs the tool and go nowhere else.</p></div>
+  <div><h3>Safe by default</h3><p>Anything that deletes or writes has a dry run or preview, asks for confirmation, and reports failures with the reason Salesforce returned.</p></div>
+ </div>
+</div></section>
+
+<section class="contact" id="contact"><div class="wrap">
+ <div>
+  <h2>See it on your own sandbox.</h2>
+  <p>The tools are available individually or as a full toolkit, for in-house teams and implementation partners. Get in touch for a live walkthrough against one of your sandboxes, and for pricing.</p>
+ </div>
+ <div class="card">
+  <h3>Contact</h3>
+  <div id="contact-body"></div>
+  <div id="copied" role="status"></div>
+ </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+ <p>Demo videos are screen recordings of the tools themselves, run against a simulated Salesforce org with fictional sample data. No customer data appears in them.</p>
+ <p>Salesforce is a trademark of Salesforce, Inc. These tools are independent and are not affiliated with or endorsed by Salesforce.</p>
+ <p>© <span id="yr">2026</span> Kartik</p>
+</div></footer>
+
+<script>
+/* ---- Edit these two lines with your own details ---- */
+const CONTACT_EMAIL = "";      // e.g. "you@example.com"
+const CONTACT_LINKEDIN = "";   // e.g. "https://www.linkedin.com/in/your-handle"
+/* ---------------------------------------------------- */
+(function(){
+  const body = document.getElementById('contact-body'), copied = document.getElementById('copied');
+  let h = '';
+  if (CONTACT_EMAIL) {
+    h += '<div class="addr" id="addr"></div><div class="cta"><a class="btn" id="mail">Email me</a><button class="btn ghost" id="copy" type="button">Copy address</button></div>';
+  }
+  if (CONTACT_LINKEDIN) h += '<div class="cta"><a class="btn ghost" id="li" target="_blank" rel="noopener">Message me on LinkedIn</a></div>';
+  if (!h) h = '<div class="todo">Contact details go here. Open index.html, search for CONTACT_EMAIL and add your email address or LinkedIn link.</div>';
+  body.innerHTML = h;
+  if (CONTACT_EMAIL) {
+    document.getElementById('addr').textContent = CONTACT_EMAIL;
+    document.getElementById('mail').href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent('Salesforce utilities demo');
+    document.getElementById('copy').addEventListener('click', function(){
+      navigator.clipboard.writeText(CONTACT_EMAIL).then(function(){ copied.textContent = 'Address copied'; }, function(){
+        const r = document.createRange(); r.selectNodeContents(document.getElementById('addr'));
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r); copied.textContent = 'Address selected. Press Ctrl+C to copy.'; });
+    });
+  }
+  if (CONTACT_LINKEDIN) document.getElementById('li').href = CONTACT_LINKEDIN;
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  const vids = [...document.querySelectorAll('video')];
+  document.querySelectorAll('.play').forEach(function(b){
+    b.addEventListener('click', function(){ const v = document.getElementById(b.dataset.v); v.controls = true; v.play(); });
+  });
+  vids.forEach(function(v){
+    v.addEventListener('play', function(){ v.parentElement.classList.add('on'); vids.forEach(function(o){ if (o !== v) o.pause(); }); });
+  });
+})();
+</script>
+
+</body>
+</html>
